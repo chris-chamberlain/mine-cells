@@ -54,15 +54,22 @@ kbd{font-family:var(--font-px);font-size:10px;background:var(--panel);border:2px
 .bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
 #touch{position:absolute;left:env(safe-area-inset-left,0px);right:env(safe-area-inset-right,0px);top:0;bottom:env(safe-area-inset-bottom,0px);pointer-events:none;z-index:5;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
 #stage{touch-action:none;-webkit-tap-highlight-color:transparent}
-.tb{position:absolute;pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;font-family:var(--font-px);color:#fff;background:rgba(20,26,40,.5);border:2px solid rgba(255,255,255,.35);border-radius:50%;width:clamp(46px,10vmin,76px);height:clamp(46px,10vmin,76px);font-size:clamp(8px,1.8vmin,12px);text-align:center;line-height:1.2;-webkit-user-select:none;user-select:none}
-.tb.on{background:rgba(62,209,122,.65);border-color:#fff}
-.tb.sm{width:clamp(38px,8vmin,60px);height:clamp(38px,8vmin,60px);font-size:clamp(7px,1.5vmin,10px)}
+.tb{--m:10px;--g:calc(var(--b,56px)*.18);--s:calc(var(--b,56px)*.78);position:absolute;pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;font-family:var(--font-px);color:#fff;background:rgba(20,26,40,.55);border:2px solid rgba(255,255,255,.4);border-radius:50%;width:var(--b,56px);height:var(--b,56px);font-size:calc(var(--b,56px)*.15);text-align:center;line-height:1.2;-webkit-user-select:none;user-select:none}
+.tb.on{background:rgba(62,209,122,.7);border-color:#fff}
+.tb.sm{width:var(--s);height:var(--s);font-size:calc(var(--b,56px)*.13)}
 .tb.sq{border-radius:10px}
-#tL{left:3%;bottom:6%}#tR{left:calc(3% + clamp(56px,12vmin,92px));bottom:6%}#tD{left:calc(3% + clamp(28px,6vmin,46px));bottom:calc(6% + clamp(56px,12vmin,92px))}
-#tJ{right:3%;bottom:6%}#tS{right:calc(3% + clamp(56px,12vmin,92px));bottom:6%}
-#tK{right:3%;bottom:calc(6% + clamp(56px,12vmin,92px))}#tRo{right:calc(3% + clamp(56px,12vmin,92px));bottom:calc(6% + clamp(56px,12vmin,92px))}
-#tE{right:3%;top:16%}#tW{right:calc(3% + clamp(46px,9vmin,68px));top:16%}#tQ{right:calc(3% + clamp(92px,18vmin,136px));top:16%}
-#tP{left:3%;top:3%}
+#tL{left:var(--m);bottom:var(--m)}
+#tR{left:calc(var(--m) + var(--b,56px) + var(--g));bottom:var(--m)}
+#tD{left:calc(var(--m) + var(--b,56px)*.5 + var(--g)*.5 + (var(--b,56px) - var(--s))*.5);bottom:calc(var(--m) + var(--b,56px) + var(--g))}
+#tJ{right:var(--m);bottom:var(--m)}
+#tS{right:calc(var(--m) + var(--b,56px) + var(--g));bottom:var(--m)}
+#tK{right:var(--m);bottom:calc(var(--m) + var(--b,56px) + var(--g))}
+#tRo{right:calc(var(--m) + var(--b,56px) + var(--g));bottom:calc(var(--m) + var(--b,56px) + var(--g))}
+#tE{right:var(--m);top:var(--m)}
+#tW{right:calc(var(--m) + var(--s) + var(--g));top:var(--m)}
+#tQ{right:calc(var(--m) + (var(--s) + var(--g))*2);top:var(--m)}
+#tP{left:var(--m);top:var(--m)}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body.touch{padding:0;overflow:hidden;overscroll-behavior:none;position:fixed;inset:0;width:100%}
 body.touch header,body.touch .bar,body.touch .keys,body.touch .hint{display:none}
 body.touch .wrap{max-width:none;gap:0}
@@ -137,6 +144,25 @@ const hit=(...c)=>c.some(k=>pressed[k]||padPressed[k]||tchPressed[k]);
 const touchUI=document.getElementById('touch');
 const isTouch=(window.matchMedia&&matchMedia('(pointer:coarse)').matches)||'ontouchstart' in window;
 if(isTouch){touchUI.hidden=false;document.body.classList.add('touch');document.getElementById('stage').classList.add('fs');}
+/* Size the game to the real visible screen (Safari's toolbars change it). */
+function fitTouch(){
+  if(!isTouch)return;
+  const st=document.getElementById('stage'),vv=window.visualViewport;
+  const w=document.documentElement.clientWidth||innerWidth;
+  const h=(vv&&Math.abs(vv.scale-1)<.02)?vv.height:innerHeight;
+  const k=Math.min(w/960,h/540),cw=Math.floor(960*k),ch=Math.floor(540*k);
+  Object.assign(st.style,{position:'fixed',left:'0px',top:'0px',width:w+'px',height:h+'px'});
+  Object.assign(cv.style,{width:cw+'px',height:ch+'px',aspectRatio:'auto'});
+  st.style.setProperty('--b',Math.round(Math.max(44,Math.min(80,Math.min(h*.17,w*.09))))+'px');
+  window.scrollTo(0,0);
+}
+fitTouch();
+for(const t of['resize','orientationchange','pageshow'])addEventListener(t,()=>{fitTouch();setTimeout(fitTouch,350);});
+if(window.visualViewport)visualViewport.addEventListener('resize',fitTouch);
+/* Stop Safari zooming on pinches and double taps. */
+for(const t of['gesturestart','gesturechange','dblclick'])document.addEventListener(t,e=>e.preventDefault(),{passive:false});
+let lastTouchEnd=0;
+document.addEventListener('touchend',e=>{const n=Date.now();if(n-lastTouchEnd<350)e.preventDefault();lastTouchEnd=n;},{passive:false});
 for(const t of['touchend','click'])addEventListener(t,()=>initAudio(),{passive:true});
 addEventListener('touchmove',e=>{if(isTouch)e.preventDefault();},{passive:false});
 function tbSet(el,on){const k=el.dataset.k;if(on&&!tch[k])tchPressed[k]=true;tch[k]=on;el.classList.toggle('on',on);}
@@ -1207,7 +1233,7 @@ function drawTitle(){
   tx('HOW TO PLAY',644,128,10,'#ffd27a');
   const L=isTouch?['Arrows: run','JUMP: jump','SWORD: swing','SHOOT: aims for you','ROLL: dodge','ITEM: use potion','GUN: pick weapon','Beat all 5 bosses!','Win emeralds.']:['Run and jump: A D W','Sword: J','Shoot: K (aims for you)','Roll: Shift','Use item: E','Pick a weapon: R','','Beat all 5 bosses!','Win emeralds, buy upgrades.'];
   L.forEach((s,i)=>tx(s,644,156+i*26,20,'#e8ebf2','left','vt'));
-  tx(padInfo.connected?'Controller ready. D-pad picks an upgrade, jump button buys, Start plays. C sets buttons.':'Controller? Plug it in and press any button.',42,470,18,padInfo.connected?'#3ed17a':'#9aa4b8','left','vt');
+  if(!isTouch||padInfo.connected)tx(padInfo.connected?'Controller ready. D-pad picks an upgrade, jump button buys, Start plays. C sets buttons.':'Controller? Plug it in and press any button.',42,470,18,padInfo.connected?'#3ed17a':'#9aa4b8','left','vt');
   const blink=Math.floor(t*2)%2;
   if(blink)tx(isTouch?'TAP HERE TO PLAY':(padInfo.connected?'PRESS START TO PLAY':'PRESS ENTER TO PLAY'),W/2,H-38,14,'#fff','center');
 }
