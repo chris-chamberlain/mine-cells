@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -50,7 +52,7 @@ kbd{font-family:var(--font-px);font-size:10px;background:var(--panel);border:2px
 .fsbtn{font-family:var(--font-px);font-size:11px;color:var(--ink);background:var(--panel);border:2px solid var(--line);border-bottom-width:4px;padding:10px 14px;cursor:pointer;align-self:flex-start}
 .fsbtn:hover,.fsbtn:focus-visible{border-color:var(--emerald);outline:none}
 .bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
-#touch{position:absolute;inset:0;pointer-events:none;z-index:5;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
+#touch{position:absolute;left:env(safe-area-inset-left,0px);right:env(safe-area-inset-right,0px);top:0;bottom:env(safe-area-inset-bottom,0px);pointer-events:none;z-index:5;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
 #stage{touch-action:none;-webkit-tap-highlight-color:transparent}
 .tb{position:absolute;pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;font-family:var(--font-px);color:#fff;background:rgba(20,26,40,.5);border:2px solid rgba(255,255,255,.35);border-radius:50%;width:clamp(46px,10vmin,76px);height:clamp(46px,10vmin,76px);font-size:clamp(8px,1.8vmin,12px);text-align:center;line-height:1.2;-webkit-user-select:none;user-select:none}
 .tb.on{background:rgba(62,209,122,.65);border-color:#fff}
@@ -61,8 +63,11 @@ kbd{font-family:var(--font-px);font-size:10px;background:var(--panel);border:2px
 #tK{right:3%;bottom:calc(6% + clamp(56px,12vmin,92px))}#tRo{right:calc(3% + clamp(56px,12vmin,92px));bottom:calc(6% + clamp(56px,12vmin,92px))}
 #tE{right:3%;top:16%}#tW{right:calc(3% + clamp(46px,9vmin,68px));top:16%}#tQ{right:calc(3% + clamp(92px,18vmin,136px));top:16%}
 #tP{left:3%;top:3%}
-.rot{display:none;color:var(--gold)}
-@media (orientation:portrait) and (pointer:coarse){.rot{display:block}}
+body.touch{padding:0;overflow:hidden;overscroll-behavior:none;position:fixed;inset:0;width:100%}
+body.touch header,body.touch .bar,body.touch .keys,body.touch .hint{display:none}
+body.touch .wrap{max-width:none;gap:0}
+#rot{display:none;position:absolute;inset:0;z-index:10;align-items:center;justify-content:center;text-align:center;padding:24px;background:rgba(0,0,0,.88);color:var(--gold);font-family:var(--font-px);font-size:14px;line-height:1.8}
+@media (orientation:portrait) and (max-width:600px){body.touch #rot{display:flex}}
 </style>
 </head>
 <body>
@@ -73,6 +78,7 @@ kbd{font-family:var(--font-px);font-size:10px;background:var(--panel);border:2px
     <div class="by">Game designer: <b>Wes</b></div>
   </header>
   <div id="stage"><canvas id="g" width="960" height="540" tabindex="0"></canvas>
+    <div id="rot">TURN YOUR PHONE SIDEWAYS TO PLAY</div>
     <div id="touch" hidden>
       <div class="tb" id="tL" data-k="KeyA">&#9664;</div><div class="tb" id="tR" data-k="KeyD">&#9654;</div><div class="tb sm" id="tD" data-k="KeyS">&#9660;</div>
       <div class="tb" id="tJ" data-k="Space">JUMP</div><div class="tb" id="tS" data-k="KeyJ">SWORD</div>
@@ -93,7 +99,6 @@ kbd{font-family:var(--font-px);font-size:10px;background:var(--panel);border:2px
     <li><span><kbd>P</kbd> pause, <kbd>M</kbd> sound</span></li>
     <li><span>Controller: plug in, press a button, then <kbd>C</kbd> on the title screen sets the buttons</span></li>
   </ul>
-  <p class="hint rot">Turn your phone sideways to play.</p>
   <p class="hint">Click the game once, then press Enter. Emeralds you win are saved on this device and buy upgrades on the title screen.</p>
 </div>
 
@@ -131,7 +136,9 @@ const hit=(...c)=>c.some(k=>pressed[k]||padPressed[k]||tchPressed[k]);
 /* ---------- touch controls ---------- */
 const touchUI=document.getElementById('touch');
 const isTouch=(window.matchMedia&&matchMedia('(pointer:coarse)').matches)||'ontouchstart' in window;
-if(isTouch)touchUI.hidden=false;
+if(isTouch){touchUI.hidden=false;document.body.classList.add('touch');document.getElementById('stage').classList.add('fs');}
+for(const t of['touchend','click'])addEventListener(t,()=>initAudio(),{passive:true});
+addEventListener('touchmove',e=>{if(isTouch)e.preventDefault();},{passive:false});
 function tbSet(el,on){const k=el.dataset.k;if(on&&!tch[k])tchPressed[k]=true;tch[k]=on;el.classList.toggle('on',on);}
 touchUI.querySelectorAll('.tb').forEach(el=>{
   el.addEventListener('pointerdown',e=>{e.preventDefault();initAudio();try{el.setPointerCapture(e.pointerId);}catch(_){}tbSet(el,true);});
@@ -1198,7 +1205,7 @@ function drawTitle(){
   }
   fr(630,116,300,300,'#0009');
   tx('HOW TO PLAY',644,128,10,'#ffd27a');
-  const L=['Run and jump: A D W','Sword: J','Shoot: K (aims for you)','Roll: Shift','Use item: E','Pick a weapon: R','','Beat all 5 bosses!','Win emeralds, buy upgrades.'];
+  const L=isTouch?['Arrows: run','JUMP: jump','SWORD: swing','SHOOT: aims for you','ROLL: dodge','ITEM: use potion','GUN: pick weapon','Beat all 5 bosses!','Win emeralds.']:['Run and jump: A D W','Sword: J','Shoot: K (aims for you)','Roll: Shift','Use item: E','Pick a weapon: R','','Beat all 5 bosses!','Win emeralds, buy upgrades.'];
   L.forEach((s,i)=>tx(s,644,156+i*26,20,'#e8ebf2','left','vt'));
   tx(padInfo.connected?'Controller ready. D-pad picks an upgrade, jump button buys, Start plays. C sets buttons.':'Controller? Plug it in and press any button.',42,470,18,padInfo.connected?'#3ed17a':'#9aa4b8','left','vt');
   const blink=Math.floor(t*2)%2;
