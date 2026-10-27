@@ -69,6 +69,8 @@ kbd{font-family:var(--font-px);font-size:10px;background:var(--panel);border:2px
 #tW{right:calc(var(--m) + var(--s) + var(--g));top:var(--m)}
 #tQ{right:calc(var(--m) + (var(--s) + var(--g))*2);top:var(--m)}
 #tP{left:var(--m);top:var(--m)}
+#tU{left:calc(var(--m) + var(--b,56px)*.5 + var(--g)*.5 + (var(--b,56px) - var(--s))*.5);bottom:calc(var(--m) + var(--b,56px) + var(--g)*2 + var(--s))}
+.tb[hidden]{display:none}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body.touch{padding:0;overflow:hidden;overscroll-behavior:none;position:fixed;inset:0;width:100%}
 body.touch header,body.touch .bar,body.touch .keys,body.touch .hint{display:none}
@@ -87,7 +89,7 @@ body.touch .wrap{max-width:none;gap:0}
   <div id="stage"><canvas id="g" width="960" height="540" tabindex="0"></canvas>
     <div id="rot">TURN YOUR PHONE SIDEWAYS TO PLAY</div>
     <div id="touch" hidden>
-      <div class="tb" id="tL" data-k="KeyA">&#9664;</div><div class="tb" id="tR" data-k="KeyD">&#9654;</div><div class="tb sm" id="tD" data-k="KeyS">&#9660;</div>
+      <div class="tb" id="tL" data-k="KeyA">&#9664;</div><div class="tb" id="tR" data-k="KeyD">&#9654;</div><div class="tb sm" id="tD" data-k="KeyS">&#9660;</div><div class="tb sm" id="tU" data-k="KeyW" hidden>&#9650;</div>
       <div class="tb" id="tJ" data-k="Space">JUMP</div><div class="tb" id="tS" data-k="KeyJ">SWORD</div>
       <div class="tb" id="tK" data-k="KeyK">SHOOT</div><div class="tb" id="tRo" data-k="ShiftLeft">ROLL</div>
       <div class="tb sm" id="tE" data-k="KeyE">ITEM</div><div class="tb sm" id="tW" data-k="KeyR">GUN</div><div class="tb sm" id="tQ" data-k="KeyQ">NEXT</div>
@@ -165,6 +167,14 @@ let lastTouchEnd=0;
 document.addEventListener('touchend',e=>{const n=Date.now();if(n-lastTouchEnd<350)e.preventDefault();lastTouchEnd=n;},{passive:false});
 for(const t of['touchend','click'])addEventListener(t,()=>initAudio(),{passive:true});
 addEventListener('touchmove',e=>{if(isTouch)e.preventDefault();},{passive:false});
+let tbMode='';
+function tbLabels(){
+  const m=(state==='title')?'menu':'game';if(m===tbMode||!isTouch)return;tbMode=m;
+  const L=m==='menu'?{tJ:'BUY',tS:'PLAY'}:{tJ:'JUMP',tS:'SWORD'};
+  for(const id in L)document.getElementById(id).textContent=L[id];
+  for(const id of['tK','tRo','tE','tW','tQ','tP','tL','tR'])document.getElementById(id).hidden=(m==='menu');
+  document.getElementById('tU').hidden=(m!=='menu');
+}
 function tbSet(el,on){const k=el.dataset.k;if(on&&!tch[k])tchPressed[k]=true;tch[k]=on;el.classList.toggle('on',on);}
 touchUI.querySelectorAll('.tb').forEach(el=>{
   el.addEventListener('pointerdown',e=>{e.preventDefault();initAudio();try{el.setPointerCapture(e.pointerId);}catch(_){}tbSet(el,true);});
@@ -174,7 +184,7 @@ function tapAt(e){
   if(e.pointerType==='mouse')return;
   const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)*W/r.width,y=(e.clientY-r.top)*H/r.height;
   if(state==='title'){
-    for(let i=0;i<SHOP.length;i++){const yy=180+i*36;if(x>36&&x<600&&y>yy-6&&y<yy+28){shopSel=i;buy(i);return;}}
+    for(let i=0;i<SHOP.length;i++){const yy=180+i*36;if(x>36&&x<600&&y>yy-6&&y<yy+28){if(shopSel===i)buy(i);else{shopSel=i;sfx(500,.05,'square',.03);}return;}}
     if(y>H-70&&x>200&&x<760){tchPressed.Enter=true;return;}
     if(padInfo.connected===false&&x>630&&y>116&&y<416)tchPressed.Enter=true;
   }else if(state==='dead'||state==='win'){tchPressed.Enter=true;}
@@ -1233,9 +1243,11 @@ function drawTitle(){
   tx('HOW TO PLAY',644,128,10,'#ffd27a');
   const L=isTouch?['Arrows: run','JUMP: jump','SWORD: swing','SHOOT: aims for you','ROLL: dodge','ITEM: use potion','GUN: pick weapon','Beat all 5 bosses!','Win emeralds.']:['Run and jump: A D W','Sword: J','Shoot: K (aims for you)','Roll: Shift','Use item: E','Pick a weapon: R','','Beat all 5 bosses!','Win emeralds, buy upgrades.'];
   L.forEach((s,i)=>tx(s,644,156+i*26,20,'#e8ebf2','left','vt'));
+  if(isTouch&&!padInfo.connected)tx('Tap an upgrade or use the arrows. Tap it again or press BUY.',42,470,18,'#e8ebf2','left','vt');
+  if(titleMsgT>0){titleMsgT-=1/60;fr(36,446,564,22,'#000c');tx(titleMsg,42,448,18,'#ffd27a','left','vt');}
   if(!isTouch||padInfo.connected)tx(padInfo.connected?'Controller ready. D-pad picks an upgrade, jump button buys, Start plays. C sets buttons.':'Controller? Plug it in and press any button.',42,470,18,padInfo.connected?'#3ed17a':'#9aa4b8','left','vt');
   const blink=Math.floor(t*2)%2;
-  if(blink)tx(isTouch?'TAP HERE TO PLAY':(padInfo.connected?'PRESS START TO PLAY':'PRESS ENTER TO PLAY'),W/2,H-38,14,'#fff','center');
+  if(blink)tx(isTouch?'PRESS PLAY OR TAP HERE':(padInfo.connected?'PRESS START TO PLAY':'PRESS ENTER TO PLAY'),W/2,H-38,14,'#fff','center');
 }
 function drawEnd(win){
   fr(0,0,W,H,'rgba(0,0,0,.7)');
@@ -1255,8 +1267,12 @@ function drawEnd(win){
 
 /* ---------- main loop ---------- */
 let shopSel=0,setupI=0,setupPrev=[];
+let titleMsg='',titleMsgT=0;
 function buy(i){
   const s=SHOP[i];
+  if(owns(s.id)){titleMsg='You already have '+s.n+'.';titleMsgT=2;}
+  else if(SAVE.em<s.c){titleMsg='You need '+s.c+' emeralds for '+s.n+'. You have '+SAVE.em+'.';titleMsgT=2.5;}
+  else{titleMsg='Bought '+s.n+'!';titleMsgT=2;}
   if(!owns(s.id)&&SAVE.em>=s.c){SAVE.em-=s.c;SAVE.own.push(s.id);save();sfx(660,.2,'square',.05,300);}
   else sfx(120,.15,'square',.04,-30);
 }
@@ -1278,9 +1294,10 @@ function step(dt){
   }
   if(state==='title'){
     for(let i=0;i<SHOP.length;i++)if(hit('Digit'+(i+1),'Numpad'+(i+1)))buy(i);
-    if(hit('PadUp','ArrowUp'))shopSel=(shopSel+SHOP.length-1)%SHOP.length;
-    if(hit('PadDown','ArrowDown'))shopSel=(shopSel+1)%SHOP.length;
+    if(hit('PadUp','ArrowUp','KeyW'))shopSel=(shopSel+SHOP.length-1)%SHOP.length;
+    if(hit('PadDown','ArrowDown','KeyS'))shopSel=(shopSel+1)%SHOP.length;
     if(hit('Space'))buy(shopSel);
+    if(isTouch&&hit('KeyJ')){newRun();return;}
     if(hit('KeyC','KeyQ')&&padInfo.connected){startPadSetup();return;}
     if(padInfo.connected&&!padInfo.standard&&!padSaved&&!padAsked){startPadSetup();return;}
     if(hit('Enter','NumpadEnter'))newRun();
@@ -1316,7 +1333,7 @@ let last=performance.now();
 function frame(now){
   const dt=Math.min(.033,(now-last)/1000);last=now;
   pollPad();
-  step(dt);draw();
+  step(dt);tbLabels();draw();
   for(const k in pressed)delete pressed[k];
   for(const k in padPressed)delete padPressed[k];
   for(const k in tchPressed)delete tchPressed[k];
