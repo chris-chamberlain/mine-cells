@@ -50,6 +50,19 @@ kbd{font-family:var(--font-px);font-size:10px;background:var(--panel);border:2px
 .fsbtn{font-family:var(--font-px);font-size:11px;color:var(--ink);background:var(--panel);border:2px solid var(--line);border-bottom-width:4px;padding:10px 14px;cursor:pointer;align-self:flex-start}
 .fsbtn:hover,.fsbtn:focus-visible{border-color:var(--emerald);outline:none}
 .bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+#touch{position:absolute;inset:0;pointer-events:none;z-index:5;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
+#stage{touch-action:none;-webkit-tap-highlight-color:transparent}
+.tb{position:absolute;pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;font-family:var(--font-px);color:#fff;background:rgba(20,26,40,.5);border:2px solid rgba(255,255,255,.35);border-radius:50%;width:clamp(46px,10vmin,76px);height:clamp(46px,10vmin,76px);font-size:clamp(8px,1.8vmin,12px);text-align:center;line-height:1.2;-webkit-user-select:none;user-select:none}
+.tb.on{background:rgba(62,209,122,.65);border-color:#fff}
+.tb.sm{width:clamp(38px,8vmin,60px);height:clamp(38px,8vmin,60px);font-size:clamp(7px,1.5vmin,10px)}
+.tb.sq{border-radius:10px}
+#tL{left:3%;bottom:6%}#tR{left:calc(3% + clamp(56px,12vmin,92px));bottom:6%}#tD{left:calc(3% + clamp(28px,6vmin,46px));bottom:calc(6% + clamp(56px,12vmin,92px))}
+#tJ{right:3%;bottom:6%}#tS{right:calc(3% + clamp(56px,12vmin,92px));bottom:6%}
+#tK{right:3%;bottom:calc(6% + clamp(56px,12vmin,92px))}#tRo{right:calc(3% + clamp(56px,12vmin,92px));bottom:calc(6% + clamp(56px,12vmin,92px))}
+#tE{right:3%;top:16%}#tW{right:calc(3% + clamp(46px,9vmin,68px));top:16%}#tQ{right:calc(3% + clamp(92px,18vmin,136px));top:16%}
+#tP{left:3%;top:3%}
+.rot{display:none;color:var(--gold)}
+@media (orientation:portrait) and (pointer:coarse){.rot{display:block}}
 </style>
 </head>
 <body>
@@ -59,7 +72,14 @@ kbd{font-family:var(--font-px);font-size:10px;background:var(--panel);border:2px
     <h1>MINE CELLS</h1>
     <div class="by">Game designer: <b>Wes</b></div>
   </header>
-  <div id="stage"><canvas id="g" width="960" height="540" tabindex="0"></canvas></div>
+  <div id="stage"><canvas id="g" width="960" height="540" tabindex="0"></canvas>
+    <div id="touch" hidden>
+      <div class="tb" id="tL" data-k="KeyA">&#9664;</div><div class="tb" id="tR" data-k="KeyD">&#9654;</div><div class="tb sm" id="tD" data-k="KeyS">&#9660;</div>
+      <div class="tb" id="tJ" data-k="Space">JUMP</div><div class="tb" id="tS" data-k="KeyJ">SWORD</div>
+      <div class="tb" id="tK" data-k="KeyK">SHOOT</div><div class="tb" id="tRo" data-k="ShiftLeft">ROLL</div>
+      <div class="tb sm" id="tE" data-k="KeyE">ITEM</div><div class="tb sm" id="tW" data-k="KeyR">GUN</div><div class="tb sm" id="tQ" data-k="KeyQ">NEXT</div>
+      <div class="tb sm sq" id="tP" data-k="KeyP">II</div>
+    </div></div>
   <div class="bar"><button class="fsbtn" id="fsbtn" type="button">FULL SCREEN (F)</button><span class="hint">On iPhone or iPad, tap Share, then Add to Home Screen, for full screen.</span></div>
   <ul class="keys">
     <li><span><kbd>A</kbd> <kbd>D</kbd> or arrows: move</span></li>
@@ -73,6 +93,7 @@ kbd{font-family:var(--font-px);font-size:10px;background:var(--panel);border:2px
     <li><span><kbd>P</kbd> pause, <kbd>M</kbd> sound</span></li>
     <li><span>Controller: plug in, press a button, then <kbd>C</kbd> on the title screen sets the buttons</span></li>
   </ul>
+  <p class="hint rot">Turn your phone sideways to play.</p>
   <p class="hint">Click the game once, then press Enter. Emeralds you win are saved on this device and buy upgrades on the title screen.</p>
 </div>
 
@@ -103,9 +124,30 @@ addEventListener('keydown',e=>{
 addEventListener('keyup',e=>{keys[e.code]=false;});
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
 cv.addEventListener('pointerdown',()=>{cv.focus();initAudio();});
-const pad={},padPressed={};
-const down=(...c)=>c.some(k=>keys[k]||pad[k]);
-const hit=(...c)=>c.some(k=>pressed[k]||padPressed[k]);
+const pad={},padPressed={},tch={},tchPressed={};
+const down=(...c)=>c.some(k=>keys[k]||pad[k]||tch[k]);
+const hit=(...c)=>c.some(k=>pressed[k]||padPressed[k]||tchPressed[k]);
+
+/* ---------- touch controls ---------- */
+const touchUI=document.getElementById('touch');
+const isTouch=(window.matchMedia&&matchMedia('(pointer:coarse)').matches)||'ontouchstart' in window;
+if(isTouch)touchUI.hidden=false;
+function tbSet(el,on){const k=el.dataset.k;if(on&&!tch[k])tchPressed[k]=true;tch[k]=on;el.classList.toggle('on',on);}
+touchUI.querySelectorAll('.tb').forEach(el=>{
+  el.addEventListener('pointerdown',e=>{e.preventDefault();initAudio();try{el.setPointerCapture(e.pointerId);}catch(_){}tbSet(el,true);});
+  for(const t of['pointerup','pointercancel','lostpointercapture'])el.addEventListener(t,()=>tbSet(el,false));
+});
+function tapAt(e){
+  if(e.pointerType==='mouse')return;
+  const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)*W/r.width,y=(e.clientY-r.top)*H/r.height;
+  if(state==='title'){
+    for(let i=0;i<SHOP.length;i++){const yy=180+i*36;if(x>36&&x<600&&y>yy-6&&y<yy+28){shopSel=i;buy(i);return;}}
+    if(y>H-70&&x>200&&x<760){tchPressed.Enter=true;return;}
+    if(padInfo.connected===false&&x>630&&y>116&&y<416)tchPressed.Enter=true;
+  }else if(state==='dead'||state==='win'){tchPressed.Enter=true;}
+  else if(state==='paused'){tchPressed.KeyP=true;}
+}
+cv.addEventListener('pointerdown',tapAt);
 
 /* ---------- controller (Gamepad API) ---------- */
 /* Button numbers for a standard pad: 0 bottom, 1 right, 2 left, 3 top, 4 L, 5 R, 8 Select, 9 Start.
@@ -1160,7 +1202,7 @@ function drawTitle(){
   L.forEach((s,i)=>tx(s,644,156+i*26,20,'#e8ebf2','left','vt'));
   tx(padInfo.connected?'Controller ready. D-pad picks an upgrade, jump button buys, Start plays. C sets buttons.':'Controller? Plug it in and press any button.',42,470,18,padInfo.connected?'#3ed17a':'#9aa4b8','left','vt');
   const blink=Math.floor(t*2)%2;
-  if(blink)tx(padInfo.connected?'PRESS START TO PLAY':'PRESS ENTER TO PLAY',W/2,H-38,14,'#fff','center');
+  if(blink)tx(isTouch?'TAP HERE TO PLAY':(padInfo.connected?'PRESS START TO PLAY':'PRESS ENTER TO PLAY'),W/2,H-38,14,'#fff','center');
 }
 function drawEnd(win){
   fr(0,0,W,H,'rgba(0,0,0,.7)');
@@ -1175,7 +1217,7 @@ function drawEnd(win){
   gem(W/2-150,236,16);tx('Emeralds banked: '+(run.em+(win?300:0)),W/2-124,236,12,'#3ed17a');
   tx('Monsters beaten: '+run.kills,W/2,272,20,'#e8ebf2','center','vt');
   tx('Total emeralds: '+SAVE.em,W/2,296,20,'#e8ebf2','center','vt');
-  if(stateT>.8&&Math.floor(performance.now()/500)%2)tx('PRESS ENTER FOR UPGRADES',W/2,H-90,14,'#fff','center');
+  if(stateT>.8&&Math.floor(performance.now()/500)%2)tx(isTouch?'TAP FOR UPGRADES':'PRESS ENTER FOR UPGRADES',W/2,H-90,14,'#fff','center');
 }
 
 /* ---------- main loop ---------- */
@@ -1244,6 +1286,7 @@ function frame(now){
   step(dt);draw();
   for(const k in pressed)delete pressed[k];
   for(const k in padPressed)delete padPressed[k];
+  for(const k in tchPressed)delete tchPressed[k];
   requestAnimationFrame(frame);
 }
 try{document.fonts&&document.fonts.load('12px "Press Start 2P"');document.fonts&&document.fonts.load('20px VT323');}catch(e){}
